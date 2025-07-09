@@ -82,7 +82,7 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
         "🌙 You'll get a Good Night message at 11 PM and a Good Morning message at 7 AM."
     )
     sample_text = "✅ The bot is active! You'll start receiving reminders soon."
-    sample_water = "💧 Time to drink water! (Sample Reminder)"
+    sample_water = "💧 Time to drink water!"
 
     await update.message.reply_text(welcome_text, parse_mode="HTML")
     await update.message.reply_text(sample_text, parse_mode="HTML")
