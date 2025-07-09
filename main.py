@@ -1,5 +1,7 @@
-import asyncio
 import os
+import asyncio
+from datetime import datetime
+
 from telegram import Bot, Update
 from telegram.constants import ParseMode
 from telegram.ext import (
@@ -8,7 +10,6 @@ from telegram.ext import (
     ContextTypes,
 )
 from apscheduler.schedulers.asyncio import AsyncIOScheduler
-from datetime import datetime
 
 # Environment variables
 BOT_TOKEN = os.getenv("BOT_TOKEN")
@@ -48,7 +49,7 @@ def schedule_reminders():
         scheduler.add_job(send_and_delete, "cron", hour=hour, minute=0, args=["💧 Time to drink water!"])
 
 
-# ------------------- COMMAND HANDLERS -------------------
+# ----------- Telegram Bot Command Handlers -----------
 
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     welcome = f"""
@@ -73,34 +74,21 @@ async def get_id(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await update.message.reply_text(f"Your chat ID is: <code>{update.effective_chat.id}</code>", parse_mode="HTML")
 
 
-# ------------------- MAIN -------------------
+# ----------- Main App -----------
 
 async def main():
     app = ApplicationBuilder().token(BOT_TOKEN).build()
 
-    # Schedule reminders
-    schedule_reminders()
-    scheduler.start()
-
-    # Command handlers
     app.add_handler(CommandHandler("start", start))
     app.add_handler(CommandHandler("id", get_id))
 
-    print("✅ Bot is running with /start and scheduled reminders")
+    # Start scheduler after bot is up
+    schedule_reminders()
+    scheduler.start()
+
+    print("✅ Bot is running with reminders and /start command")
     await app.run_polling()
 
+
 if __name__ == "__main__":
-    import asyncio
-
-    app = ApplicationBuilder().token(BOT_TOKEN).build()
-
-    # Schedule reminders
-    schedule_reminders()
-    scheduler.start()
-
-    # Command handlers
-    app.add_handler(CommandHandler("start", start))
-    app.add_handler(CommandHandler("id", get_id))
-
-    print("✅ Bot is running with /start and scheduled reminders")
-    app.run_polling()  # ✅ No need to wrap in asyncio.run()
+    asyncio.run(main())
