@@ -13,37 +13,40 @@ scheduler = AsyncIOScheduler()
 
 DELETE_AFTER_SECONDS = 300  # 5 minutes
 
-# Reminder Times (IST)
-water_hours = [7, 9, 11, 13, 15, 17, 19, 21]
+# Food reminders (Indian time)
 food_reminders = {
     (8, 30): "🍳 Good morning! Time for a healthy breakfast.",
-    (13, 0): "🍱 Lunch time! Don’t skip meals.",
-    (20, 0): "🍽️ Dinner time! Eat well, sleep well."
+    (13, 0): "🍱 It's lunch time! Fuel your body right.",
+    (20, 0): "🍽️ Dinner time! Wrap up your day with a light meal."
 }
+
+# Water reminders at 2-hour intervals from 7 AM to 9 PM
+water_hours = [7, 9, 11, 13, 15, 17, 19, 21]
 
 async def send_and_delete(text):
     now = datetime.now().time()
     if now.hour < 7 or now.hour >= 23:
-        return  # Only run between 7 AM and 11 PM
-
+        return  # Don't run outside 7 AM – 11 PM
     message = await bot.send_message(chat_id=CHAT_ID, text=text, parse_mode=ParseMode.HTML)
     await asyncio.sleep(DELETE_AFTER_SECONDS)
     try:
         await bot.delete_message(chat_id=CHAT_ID, message_id=message.message_id)
     except Exception as e:
-        print(f"Failed to delete message: {e}")
+        print(f"Could not delete message: {e}")
 
-def schedule_all():
+def schedule_reminders():
+    # Schedule food
     for (hour, minute), msg in food_reminders.items():
         scheduler.add_job(send_and_delete, 'cron', hour=hour, minute=minute, args=[msg])
 
+    # Schedule water
     for hour in water_hours:
         scheduler.add_job(send_and_delete, 'cron', hour=hour, minute=0, args=["💧 Time to drink water!"])
 
 async def main():
-    schedule_all()
+    schedule_reminders()
     scheduler.start()
-    print("✅ Bot is running...")
+    print("✅ Reminder bot is running...")
     while True:
         await asyncio.sleep(60)
 
