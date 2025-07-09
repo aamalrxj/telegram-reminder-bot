@@ -51,7 +51,7 @@ def schedule_reminders():
     for hour in water_hours:
         scheduler.add_job(send_and_delete, "cron", hour=hour, minute=0, args=["💧 Time to drink water!"])
 
-# /start command (no chat ID revealed, sends a sample message)
+# /start command (no chat ID revealed, sends a sample message and a sample water reminder)
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     welcome_text = (
         "👋 Hello!\n\n"
@@ -65,12 +65,11 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
         "🕓 Bot only sends messages between 7 AM and 11 PM."
     )
     sample_text = "✅ The bot is active! You'll start receiving reminders soon."
+    sample_water = "💧 Time to drink water! (Sample Reminder)"
+
     await update.message.reply_text(welcome_text, parse_mode="HTML")
     await update.message.reply_text(sample_text, parse_mode="HTML")
-
-# /id command (optional: you can remove this handler if you never want to reveal the ID)
-# async def get_id(update: Update, context: ContextTypes.DEFAULT_TYPE):
-#     await update.message.reply_text(f"🆔 Your Chat ID is: <code>{update.effective_chat.id}</code>", parse_mode="HTML")
+    await update.message.reply_text(sample_water, parse_mode="HTML")
 
 # Startup callback to start the scheduler after the event loop is running
 async def on_startup(app):
@@ -81,8 +80,7 @@ if __name__ == "__main__":
     app = ApplicationBuilder().token(BOT_TOKEN).build()
 
     app.add_handler(CommandHandler("start", start))
-    # Remove the next line if you never want to reveal the chat ID
-    # app.add_handler(CommandHandler("id", get_id))
+    # The /id command is omitted to avoid revealing the chat ID
 
     schedule_reminders()
 
