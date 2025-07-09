@@ -8,7 +8,11 @@ from apscheduler.schedulers.asyncio import AsyncIOScheduler
 
 # Load environment variables
 BOT_TOKEN = os.getenv("BOT_TOKEN")
-CHAT_ID = int(os.getenv("CHAT_ID"))  # This should be set in Railway's environment
+CHAT_ID = os.getenv("CHAT_ID")  # Should be set in Railway's environment
+
+if not BOT_TOKEN or not CHAT_ID:
+    raise ValueError("BOT_TOKEN and CHAT_ID must be set in environment variables.")
+CHAT_ID = int(CHAT_ID)
 
 bot = Bot(token=BOT_TOKEN)
 scheduler = AsyncIOScheduler(timezone="Asia/Kolkata")
@@ -70,7 +74,11 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
 async def get_id(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await update.message.reply_text(f"🆔 Your Chat ID is: <code>{update.effective_chat.id}</code>", parse_mode="HTML")
 
-# Telegram bot setup
+# Startup callback to start the scheduler after the event loop is running
+async def on_startup(app):
+    scheduler.start()
+    print("✅ Scheduler started.")
+
 if __name__ == "__main__":
     app = ApplicationBuilder().token(BOT_TOKEN).build()
 
@@ -78,7 +86,9 @@ if __name__ == "__main__":
     app.add_handler(CommandHandler("id", get_id))
 
     schedule_reminders()
-    scheduler.start()
+
+    # Ensure scheduler starts after the event loop is running
+    app.post_init = on_startup
 
     print("✅ Bot is running with reminders and /start command")
     app.run_polling()
