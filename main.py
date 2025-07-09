@@ -67,8 +67,6 @@ def schedule_reminders():
         scheduler.add_job(send_and_delete, "cron", hour=hour, minute=0, args=["💧 Time to drink water!"])
     scheduler.add_job(send_good_night, "cron", hour=23, minute=0)
     scheduler.add_job(send_good_morning, "cron", hour=7, minute=0)
-    # Add a one-time sample reminder at 12:25 AM IST (adjust as needed)
-    scheduler.add_job(send_and_delete, "date", run_date="2025-07-10 00:25:00", args=["🔔 This is your custom 12:25 reminder!"])
 
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     welcome_text = (
