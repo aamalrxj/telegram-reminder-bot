@@ -90,4 +90,17 @@ async def main():
     await app.run_polling()
 
 if __name__ == "__main__":
-    asyncio.run(main())
+    import asyncio
+
+    app = ApplicationBuilder().token(BOT_TOKEN).build()
+
+    # Schedule reminders
+    schedule_reminders()
+    scheduler.start()
+
+    # Command handlers
+    app.add_handler(CommandHandler("start", start))
+    app.add_handler(CommandHandler("id", get_id))
+
+    print("✅ Bot is running with /start and scheduled reminders")
+    app.run_polling()  # ✅ No need to wrap in asyncio.run()
