@@ -9,7 +9,7 @@ BOT_TOKEN = os.getenv("BOT_TOKEN")
 CHAT_ID = int(os.getenv("CHAT_ID"))
 
 bot = Bot(token=BOT_TOKEN)
-scheduler = AsyncIOScheduler()
+scheduler = AsyncIOScheduler(timezone="Asia/Kolkata")
 
 DELETE_AFTER_SECONDS = 300  # 5 minutes
 
