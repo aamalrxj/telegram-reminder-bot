@@ -30,7 +30,7 @@ food_reminders = {
 # Water reminders every 2 hours from 7 AM to 9 PM
 water_hours = [7, 9, 11, 13, 15, 17, 19, 21]
 
-# Function to send and delete messages
+# Function to send and delete messages (for normal reminders)
 async def send_and_delete(text):
     now = datetime.now().time()
     if now.hour < 7 or now.hour >= 23:
@@ -43,13 +43,38 @@ async def send_and_delete(text):
     except Exception as e:
         print(f"⚠️ Failed to delete message: {e}")
 
-# Schedule all reminders
+# Good Night message at 11 PM
+async def send_good_night():
+    text = "🌙 Good Night! Sleep well and recharge."
+    message = await bot.send_message(chat_id=CHAT_ID, text=text, parse_mode=ParseMode.HTML)
+    await asyncio.sleep(DELETE_AFTER_SECONDS)
+    try:
+        await bot.delete_message(chat_id=CHAT_ID, message_id=message.message_id)
+    except Exception as e:
+        print(f"⚠️ Failed to delete message: {e}")
+
+# Good Morning message at 7 AM
+async def send_good_morning():
+    text = "☀️ Good Morning! Time to start your day fresh."
+    message = await bot.send_message(chat_id=CHAT_ID, text=text, parse_mode=ParseMode.HTML)
+    await asyncio.sleep(DELETE_AFTER_SECONDS)
+    try:
+        await bot.delete_message(chat_id=CHAT_ID, message_id=message.message_id)
+    except Exception as e:
+        print(f"⚠️ Failed to delete message: {e}")
+
+# Schedule all reminders and day cycle messages
 def schedule_reminders():
     for (hour, minute), msg in food_reminders.items():
         scheduler.add_job(send_and_delete, "cron", hour=hour, minute=minute, args=[msg])
 
     for hour in water_hours:
         scheduler.add_job(send_and_delete, "cron", hour=hour, minute=0, args=["💧 Time to drink water!"])
+
+    # Good Night at 11 PM
+    scheduler.add_job(send_good_night, "cron", hour=23, minute=0)
+    # Good Morning at 7 AM
+    scheduler.add_job(send_good_morning, "cron", hour=7, minute=0)
 
 # /start command (no chat ID revealed, sends a sample message and a sample water reminder)
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -62,7 +87,8 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
         "  - Breakfast: 8:30 AM\n"
         "  - Lunch: 1:00 PM\n"
         "  - Dinner: 8:00 PM\n\n"
-        "🕓 Bot only sends messages between 7 AM and 11 PM."
+        "🕓 Bot only sends messages between 7 AM and 11 PM.\n"
+        "🌙 You'll get a Good Night message at 11 PM and a Good Morning message at 7 AM."
     )
     sample_text = "✅ The bot is active! You'll start receiving reminders soon."
     sample_water = "💧 Time to drink water! (Sample Reminder)"
