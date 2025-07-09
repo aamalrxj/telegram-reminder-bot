@@ -51,28 +51,26 @@ def schedule_reminders():
     for hour in water_hours:
         scheduler.add_job(send_and_delete, "cron", hour=hour, minute=0, args=["💧 Time to drink water!"])
 
-# /start command
+# /start command (no chat ID revealed, sends a sample message)
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    welcome_text = f"""
-👋 Hello {update.effective_user.first_name}!
-
-✅ This is your Health Reminder Bot.
-
-⏰ Schedule:
-• 💧 Water every 2 hours (7 AM to 9 PM)
-• 🍽️ Meals:
-  - Breakfast: 8:30 AM
-  - Lunch: 1:00 PM
-  - Dinner: 8:00 PM
-
-🕓 Bot only sends messages between 7 AM and 11 PM.
-💬 Your Chat ID: <code>{update.effective_chat.id}</code>
-"""
+    welcome_text = (
+        "👋 Hello!\n\n"
+        "✅ This is your Health Reminder Bot.\n\n"
+        "⏰ Schedule:\n"
+        "• 💧 Water every 2 hours (7 AM to 9 PM)\n"
+        "• 🍽️ Meals:\n"
+        "  - Breakfast: 8:30 AM\n"
+        "  - Lunch: 1:00 PM\n"
+        "  - Dinner: 8:00 PM\n\n"
+        "🕓 Bot only sends messages between 7 AM and 11 PM."
+    )
+    sample_text = "✅ The bot is active! You'll start receiving reminders soon."
     await update.message.reply_text(welcome_text, parse_mode="HTML")
+    await update.message.reply_text(sample_text, parse_mode="HTML")
 
-# /id command
-async def get_id(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    await update.message.reply_text(f"🆔 Your Chat ID is: <code>{update.effective_chat.id}</code>", parse_mode="HTML")
+# /id command (optional: you can remove this handler if you never want to reveal the ID)
+# async def get_id(update: Update, context: ContextTypes.DEFAULT_TYPE):
+#     await update.message.reply_text(f"🆔 Your Chat ID is: <code>{update.effective_chat.id}</code>", parse_mode="HTML")
 
 # Startup callback to start the scheduler after the event loop is running
 async def on_startup(app):
@@ -83,7 +81,8 @@ if __name__ == "__main__":
     app = ApplicationBuilder().token(BOT_TOKEN).build()
 
     app.add_handler(CommandHandler("start", start))
-    app.add_handler(CommandHandler("id", get_id))
+    # Remove the next line if you never want to reveal the chat ID
+    # app.add_handler(CommandHandler("id", get_id))
 
     schedule_reminders()
 
