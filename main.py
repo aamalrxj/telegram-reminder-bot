@@ -23,7 +23,7 @@ if not BOT_TOKEN:
 
 bot = Bot(token=BOT_TOKEN)
 scheduler = AsyncIOScheduler(timezone="Asia/Kolkata")
-DELETE_AFTER_SECONDS = 5 * 60
+DELETE_AFTER_SECONDS = 30 * 60
 
 food_reminders = {
     (8, 30): "🍳 Good morning! Time for a healthy breakfast.",
