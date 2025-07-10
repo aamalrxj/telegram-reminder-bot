@@ -1,14 +1,13 @@
 import os
 import asyncio
 import json
-from datetime import datetime
+from datetime import datetime, time as dt_time, timedelta
 import logging
 from telegram import Bot, Update
 from telegram.constants import ParseMode
 from telegram.ext import ApplicationBuilder, CommandHandler, ContextTypes
 from apscheduler.schedulers.asyncio import AsyncIOScheduler
 
-# --- Logging setup ---
 logging.basicConfig(
     format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
     level=logging.INFO
@@ -16,7 +15,8 @@ logging.basicConfig(
 logger = logging.getLogger(__name__)
 
 BOT_TOKEN = os.getenv("BOT_TOKEN")
-CHAT_IDS_FILE = "chat_ids.json"  # File to store chat IDs
+CHAT_IDS_FILE = "chat_ids.json"
+CUSTOM_REMINDERS_FILE = "custom_reminders.json"
 
 if not BOT_TOKEN:
     raise ValueError("BOT_TOKEN must be set in environment variables.")
@@ -32,7 +32,6 @@ food_reminders = {
 }
 water_hours = [7, 9, 11, 13, 15, 17, 19, 21]
 
-# --- Chat ID storage ---
 def load_chat_ids():
     if not os.path.exists(CHAT_IDS_FILE):
         return set()
@@ -51,12 +50,21 @@ def add_chat_id(chat_id):
 def get_all_chat_ids():
     return load_chat_ids()
 
-# --- Reminder sending functions ---
+def load_custom_reminders():
+    if not os.path.exists(CUSTOM_REMINDERS_FILE):
+        return []
+    with open(CUSTOM_REMINDERS_FILE, "r") as f:
+        return json.load(f)
+
+def save_custom_reminders(reminders):
+    with open(CUSTOM_REMINDERS_FILE, "w") as f:
+        json.dump(reminders, f)
+
 async def send_and_delete(text):
     chat_ids = get_all_chat_ids()
     now = datetime.now().time()
     if now.hour < 7 or now.hour >= 23:
-        return  # Only send between 7 AM and 11 PM
+        return
     for chat_id in chat_ids:
         try:
             message = await bot.send_message(chat_id=chat_id, text=text, parse_mode=ParseMode.HTML)
@@ -71,7 +79,6 @@ async def send_good_night():
 async def send_good_morning():
     await send_and_delete("☀️ Good Morning! Time to start your day fresh.")
 
-# --- Scheduler setup ---
 def schedule_reminders():
     for (hour, minute), msg in food_reminders.items():
         scheduler.add_job(send_and_delete, "cron", hour=hour, minute=minute, args=[msg])
@@ -79,8 +86,18 @@ def schedule_reminders():
         scheduler.add_job(send_and_delete, "cron", hour=hour, minute=0, args=["💧 Time to drink water!"])
     scheduler.add_job(send_good_night, "cron", hour=23, minute=0)
     scheduler.add_job(send_good_morning, "cron", hour=7, minute=0)
+    # Schedule existing custom reminders
+    for reminder in load_custom_reminders():
+        schedule_custom_reminder(reminder["time"], reminder["message"])
 
-# --- Telegram command handlers ---
+def schedule_custom_reminder(reminder_time, message):
+    now = datetime.now()
+    hour, minute = map(int, reminder_time.split(":"))
+    run_time = now.replace(hour=hour, minute=minute, second=0, microsecond=0)
+    if run_time < now:
+        run_time += timedelta(days=1)
+    scheduler.add_job(send_and_delete, "date", run_date=run_time, args=[f"🔔 {message}"])
+
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     chat_id = update.effective_chat.id
     add_chat_id(chat_id)
@@ -94,7 +111,10 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
         "  - Lunch: 1:00 PM\n"
         "  - Dinner: 8:00 PM\n\n"
         "🕓 Bot only sends messages between 7 AM and 11 PM.\n"
-        "🌙 You'll get a Good Night message at 11 PM and a Good Morning message at 7 AM."
+        "🌙 You'll get a Good Night message at 11 PM and a Good Morning message at 7 AM.\n\n"
+        "➕ To add a custom reminder for all users, use:\n"
+        "<code>/addreminder HH:MM Your message</code>\n"
+        "Example: <code>/addreminder 15:30 Meeting with team</code>"
     )
     sample_text = "✅ The bot is active! You'll start receiving reminders soon."
     sample_water = "💧 Time to drink water!"
@@ -102,11 +122,32 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await update.message.reply_text(sample_text, parse_mode="HTML")
     await update.message.reply_text(sample_water, parse_mode="HTML")
 
-# --- Global error handler ---
+async def addreminder(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    chat_id = update.effective_chat.id
+    add_chat_id(chat_id)
+    if len(context.args) < 2:
+        await update.message.reply_text("Usage: /addreminder HH:MM Your message\nExample: /addreminder 15:30 Meeting with team")
+        return
+    reminder_time = context.args[0]
+    message = " ".join(context.args[1:])
+    # Validate time
+    try:
+        hour, minute = map(int, reminder_time.split(":"))
+        if not (0 <= hour < 24 and 0 <= minute < 60):
+            raise ValueError
+    except Exception:
+        await update.message.reply_text("Invalid time format. Use HH:MM in 24-hour format.")
+        return
+    # Store and schedule
+    reminders = load_custom_reminders()
+    reminders.append({"time": reminder_time, "message": message})
+    save_custom_reminders(reminders)
+    schedule_custom_reminder(reminder_time, message)
+    await update.message.reply_text(f"✅ Reminder set for {reminder_time}: {message}\nAll users will receive this reminder.")
+
 async def error_handler(update: object, context: ContextTypes.DEFAULT_TYPE) -> None:
     logger.error("Exception while handling an update:", exc_info=context.error)
 
-# --- Startup hook ---
 async def on_startup(app):
     scheduler.start()
     logger.info("✅ Scheduler started.")
@@ -114,6 +155,7 @@ async def on_startup(app):
 if __name__ == "__main__":
     app = ApplicationBuilder().token(BOT_TOKEN).build()
     app.add_handler(CommandHandler("start", start))
+    app.add_handler(CommandHandler("addreminder", addreminder))
     app.add_error_handler(error_handler)
     schedule_reminders()
     app.post_init = on_startup
